@@ -1,0 +1,375 @@
+{
+  "name": "React Native Generator - Claude API Complete",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "generate-app",
+        "method": "POST",
+        "authentication": "none",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook_start",
+      "name": "Webhook: Start Flow",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [200, 300],
+      "webhookId": "react-native-generator"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Extract prompt from multiple possible sources\nlet prompt = '';\nlet projectName = 'MyReactNativeApp';\nlet useGoogleDoc = false;\nlet googleDocId = '';\n\n// Check webhook body\nif ($input.item.json.body) {\n  const body = $input.item.json.body;\n  prompt = body.prompt || '';\n  projectName = body.projectName || projectName;\n  googleDocId = body.googleDocId || '';\n  useGoogleDoc = body.useGoogleDoc || false;\n}\n\n// Check query parameters\nif ($input.item.json.query) {\n  const query = $input.item.json.query;\n  prompt = query.prompt || prompt;\n  projectName = query.projectName || projectName;\n  googleDocId = query.googleDocId || googleDocId;\n  useGoogleDoc = query.useGoogleDoc === 'true' || useGoogleDoc;\n}\n\nreturn {\n  prompt,\n  projectName,\n  useGoogleDoc,\n  googleDocId,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "extract_parameters",
+      "name": "Extract Parameters",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.useGoogleDoc}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check_google_doc",
+      "name": "Check Google Doc",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://docs.google.com/document/d/{{$json.googleDocId}}/export?format=txt",
+        "authentication": "none",
+        "method": "GET",
+        "options": {
+          "timeout": 10000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": true,
+              "maxRedirects": 5
+            }
+          }
+        },
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "User-Agent",
+              "value": "n8n-workflow/1.0"
+            }
+          ]
+        }
+      },
+      "id": "fetch_google_doc",
+      "name": "Fetch Google Doc",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [800, 200]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Merge prompts from different sources\nlet finalPrompt = '';\nconst baseData = $input.all()[0].json;\n\nif (baseData.useGoogleDoc && $input.all().length > 1) {\n  // Google Doc content\n  finalPrompt = $input.all()[1].json.data || '';\n} else {\n  // Direct prompt\n  finalPrompt = baseData.prompt || '';\n}\n\n// Validate prompt\nif (!finalPrompt || finalPrompt.trim().length === 0) {\n  throw new Error('No prompt provided. Please provide a prompt in the request body or via Google Doc.');\n}\n\nreturn {\n  prompt: finalPrompt,\n  projectName: baseData.projectName,\n  timestamp: baseData.timestamp\n};"
+      },
+      "id": "merge_prompts",
+      "name": "Merge Prompts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "let prompt = $json.prompt || '';\nconst projectName = $json.projectName || 'MyReactNativeApp';\n\n// Enhanced prompt with React Native best practices\nconst enhancedPrompt = `Create a React Native application with the following requirements:\n\n${prompt}\n\nIMPORTANT REQUIREMENTS:\n1. Use NativeWind for styling (Tailwind CSS for React Native)\n2. Include proper babel.config.js and tailwind.config.js configuration\n3. Use Expo for easier development and deployment\n4. Follow React Native best practices\n5. Include proper TypeScript support if the user mentions TypeScript\n6. Add necessary dependencies in package.json\n7. Create a clean, modular component structure\n8. Include error boundaries and proper error handling\n9. Add accessibility props where appropriate\n10. Use React Native Safe Area Context for proper device compatibility\n\nProject Name: ${projectName}\n\nPlease generate all necessary files with their complete content. Mark each file clearly with a comment indicating the filename at the top.`;\n\nreturn {\n  prompt_clean: enhancedPrompt,\n  projectName: projectName,\n  originalPrompt: prompt\n};"
+      },
+      "id": "enhance_prompt",
+      "name": "Enhance Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-3-opus-20240229\",\n  \"max_tokens\": 4096,\n  \"temperature\": 0.2,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"{{$json.prompt_clean}}\"\n    }\n  ],\n  \"system\": \"You are an expert React Native developer. Generate complete, production-ready code with all necessary imports, proper error handling, and following React Native best practices. Always include NativeWind (Tailwind CSS) for styling. Format each file with a clear comment at the top indicating the filename.\"\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "claude_api_call",
+      "name": "Claude API Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1400, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1",
+          "name": "Claude API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Parse Claude's response\nconst response = $json;\nlet content = '';\n\n// Extract content from Claude's response structure\nif (response.content && Array.isArray(response.content)) {\n  content = response.content\n    .filter(item => item.type === 'text')\n    .map(item => item.text)\n    .join('\\n');\n} else if (typeof response === 'string') {\n  content = response;\n} else {\n  throw new Error('Unexpected response format from Claude API');\n}\n\n// Extract code blocks and file structures\nconst files = [];\nconst codeBlockRegex = /```(?:jsx?|tsx?|json|js|ts|javascript|typescript)?\\n([\\s\\S]*?)```/g;\nconst fileIndicators = [\n  /\\/\\/ File: (.+?)\\n/,\n  /\\/\\/ file: (.+?)\\n/,\n  /\\/\\/ (.+?\\.(jsx?|tsx?|json|css|md))\\n/,\n  /\\/\\* File: (.+?) \\*\\//,\n  /# File: (.+?)\\n/,\n  /<!-- File: (.+?) -->/\n];\n\nlet match;\nlet lastIndex = 0;\n\n// First, try to extract files from code blocks\nwhile ((match = codeBlockRegex.exec(content)) !== null) {\n  const codeContent = match[1];\n  let fileName = null;\n  let cleanContent = codeContent;\n  \n  // Try to find filename in the code block\n  for (const regex of fileIndicators) {\n    const fileMatch = codeContent.match(regex);\n    if (fileMatch) {\n      fileName = fileMatch[1].trim();\n      cleanContent = codeContent.replace(regex, '').trim();\n      break;\n    }\n  }\n  \n  // If no filename found, try to find it before the code block\n  if (!fileName) {\n    const beforeBlock = content.substring(lastIndex, match.index);\n    const lines = beforeBlock.split('\\n');\n    for (let i = lines.length - 1; i >= 0 && i >= lines.length - 5; i--) {\n      const line = lines[i].trim();\n      if (line.includes('.js') || line.includes('.jsx') || \n          line.includes('.ts') || line.includes('.tsx') || \n          line.includes('.json') || line.includes('.md')) {\n        fileName = line.replace(/[*`#<>:\\-]/g, '').trim();\n        break;\n      }\n    }\n  }\n  \n  if (fileName && cleanContent) {\n    files.push({\n      fileName: fileName,\n      content: cleanContent\n    });\n  }\n  \n  lastIndex = match.index + match[0].length;\n}\n\n// If no files extracted, create a default App.js\nif (files.length === 0) {\n  console.warn('No code files found in Claude response');\n  files.push({\n    fileName: 'App.js',\n    content: content\n  });\n}\n\nreturn {\n  parsedFiles: files,\n  fileCount: files.length,\n  rawResponse: content,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "parse_response",
+      "name": "Parse Claude Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1600, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Generate complete React Native project structure\nconst parsedFiles = $json.parsedFiles || [];\nconst projectName = $input.all()[0].json.projectName || 'MyReactNativeApp';\nconst timestamp = new Date().toISOString();\nconst files = [];\n\n// Base project structure with NativeWind\nconst baseStructure = {\n  'package.json': {\n    \"name\": projectName.toLowerCase().replace(/[^a-z0-9]/g, ''),\n    \"version\": \"0.0.1\",\n    \"private\": true,\n    \"scripts\": {\n      \"start\": \"expo start\",\n      \"android\": \"expo start --android\",\n      \"ios\": \"expo start --ios\",\n      \"web\": \"expo start --web\",\n      \"test\": \"jest\",\n      \"lint\": \"eslint . --ext .js,.jsx,.ts,.tsx\"\n    },\n    \"dependencies\": {\n      \"expo\": \"~49.0.15\",\n      \"expo-status-bar\": \"~1.6.0\",\n      \"react\": \"18.2.0\",\n      \"react-native\": \"0.72.6\",\n      \"nativewind\": \"^2.0.11\",\n      \"react-native-safe-area-context\": \"4.6.3\",\n      \"react-native-screens\": \"~3.22.0\",\n      \"@expo/vector-icons\": \"^13.0.0\",\n      \"expo-font\": \"~11.4.0\",\n      \"expo-splash-screen\": \"~0.20.5\",\n      \"expo-constants\": \"~14.4.2\"\n    },\n    \"devDependencies\": {\n      \"@babel/core\": \"^7.20.0\",\n      \"@types/react\": \"~18.2.14\",\n      \"typescript\": \"^5.1.3\",\n      \"tailwindcss\": \"3.3.0\",\n      \"jest\": \"^29.2.1\",\n      \"@testing-library/react-native\": \"^12.2.0\",\n      \"eslint\": \"^8.45.0\",\n      \"eslint-config-expo\": \"^7.0.0\",\n      \"prettier\": \"^3.0.0\"\n    },\n    \"jest\": {\n      \"preset\": \"jest-expo\"\n    }\n  },\n  'babel.config.js': `module.exports = function(api) {\n  api.cache(true);\n  return {\n    presets: ['babel-preset-expo'],\n    plugins: ['nativewind/babel'],\n  };\n};`,\n  'tailwind.config.js': `/** @type {import('tailwindcss').Config} */\nmodule.exports = {\n  content: [\n    \"./App.{js,jsx,ts,tsx}\",\n    \"./src/**/*.{js,jsx,ts,tsx}\",\n    \"./components/**/*.{js,jsx,ts,tsx}\",\n    \"./screens/**/*.{js,jsx,ts,tsx}\"\n  ],\n  theme: {\n    extend: {\n      colors: {\n        primary: '#007AFF',\n        secondary: '#5856D6',\n        success: '#34C759',\n        warning: '#FF9500',\n        danger: '#FF3B30',\n      }\n    },\n  },\n  plugins: [],\n}`,\n  'metro.config.js': `const { getDefaultConfig } = require('expo/metro-config');\n\nconst config = getDefaultConfig(__dirname);\n\nmodule.exports = config;`,\n  'app.json': {\n    \"expo\": {\n      \"name\": projectName,\n      \"slug\": projectName.toLowerCase().replace(/[^a-z0-9]/g, ''),\n      \"version\": \"1.0.0\",\n      \"orientation\": \"portrait\",\n      \"icon\": \"./assets/icon.png\",\n      \"userInterfaceStyle\": \"light\",\n      \"splash\": {\n        \"image\": \"./assets/splash.png\",\n        \"resizeMode\": \"contain\",\n        \"backgroundColor\": \"#ffffff\"\n      },\n      \"assetBundlePatterns\": [\"**/*\"],\n      \"ios\": {\n        \"supportsTablet\": true,\n        \"bundleIdentifier\": `com.yourcompany.${projectName.toLowerCase()}`\n      },\n      \"android\": {\n        \"adaptiveIcon\": {\n          \"foregroundImage\": \"./assets/adaptive-icon.png\",\n          \"backgroundColor\": \"#ffffff\"\n        },\n        \"package\": `com.yourcompany.${projectName.toLowerCase()}`\n      },\n      \"web\": {\n        \"favicon\": \"./assets/favicon.png\"\n      }\n    }\n  },\n  'tsconfig.json': {\n    \"extends\": \"expo/tsconfig.base\",\n    \"compilerOptions\": {\n      \"strict\": true,\n      \"jsx\": \"react-native\",\n      \"allowJs\": true,\n      \"esModuleInterop\": true,\n      \"skipLibCheck\": true,\n      \"resolveJsonModule\": true,\n      \"moduleResolution\": \"node\"\n    },\n    \"include\": [\n      \"**/*.ts\",\n      \"**/*.tsx\",\n      \"**/*.js\",\n      \"**/*.jsx\"\n    ],\n    \"exclude\": [\n      \"node_modules\",\n      \"babel.config.js\",\n      \"metro.config.js\",\n      \"jest.config.js\"\n    ]\n  },\n  '.gitignore': `# OSX\n.DS_Store\n\n# Xcode\nbuild/\n*.pbxuser\n!default.pbxuser\n*.mode1v3\n!default.mode1v3\n*.mode2v3\n!default.mode2v3\n*.perspectivev3\n!default.perspectivev3\nxcuserdata\n*.xccheckout\n*.moved-aside\nDerivedData\n*.hmap\n*.ipa\n*.xcuserstate\nproject.xcworkspace\n\n# Android/IntelliJ\nbuild/\n.idea\n.gradle\nlocal.properties\n*.iml\n*.hprof\n.cxx/\n*.keystore\n!debug.keystore\n\n# node.js\nnode_modules/\nnpm-debug.log\nyarn-error.log\n\n# fastlane\n**/fastlane/report.xml\n**/fastlane/Preview.html\n**/fastlane/screenshots\n**/fastlane/test_output\n\n# Bundle artifacts\n*.jsbundle\n\n# CocoaPods\n/ios/Pods/\n\n# Expo\n.expo/\ndist/\nweb-build/\n*.orig.*\n\n# Temporary files\n.metro-health-check*\n\n# testing\n/coverage\n\n# typescript\n*.tsbuildinfo\n\n# @generated expo-cli sync\n# The following patterns were generated by expo-cli\n\nexpo-env.d.ts\n# @end expo-cli`,\n  '.eslintrc.js': `module.exports = {\n  root: true,\n  extends: ['expo', 'prettier'],\n  plugins: ['prettier'],\n  rules: {\n    'prettier/prettier': 'error',\n  },\n};`,\n  '.prettierrc': {\n    \"singleQuote\": true,\n    \"trailingComma\": \"es5\",\n    \"tabWidth\": 2,\n    \"semi\": true,\n    \"printWidth\": 80\n  },\n  'README.md': `# ${projectName}\n\n## 📱 About\n\nThis React Native application was generated using n8n workflow with Claude AI.\n\n## 🚀 Getting Started\n\n### Prerequisites\n\n- Node.js (v16 or higher)\n- npm or yarn\n- Expo CLI: \\`npm install -g expo-cli\\`\n- For iOS development: macOS with Xcode\n- For Android development: Android Studio\n\n### Installation\n\n1. Install dependencies:\n   \\`\\`\\`bash\n   npm install\n   # or\n   yarn install\n   \\`\\`\\`\n\n2. Start the development server:\n   \\`\\`\\`bash\n   npm start\n   # or\n   yarn start\n   \\`\\`\\`\n\n### Running the app\n\n- **iOS**: Press \\`i\\` in the terminal or run \\`npm run ios\\`\n- **Android**: Press \\`a\\` in the terminal or run \\`npm run android\\`\n- **Web**: Press \\`w\\` in the terminal or run \\`npm run web\\`\n\n## 🎨 Styling with NativeWind\n\nThis project uses NativeWind (Tailwind CSS for React Native). You can use Tailwind classes directly in your components:\n\n\\`\\`\\`jsx\n<View className=\"bg-blue-500 p-4 rounded-lg\">\n  <Text className=\"text-white font-bold\">Hello NativeWind!</Text>\n</View>\n\\`\\`\\`\n\n## 📁 Project Structure\n\n\\`\\`\\`\n${projectName}/\n├── assets/          # Images, fonts, and other static assets\n├── components/      # Reusable components\n├── screens/         # Screen components\n├── utils/           # Helper functions and utilities\n├── App.js          # Main application component\n├── app.json        # Expo configuration\n├── babel.config.js # Babel configuration\n├── tailwind.config.js # Tailwind CSS configuration\n└── package.json    # Dependencies and scripts\n\\`\\`\\`\n\n## 🧪 Testing\n\nRun tests with:\n\\`\\`\\`bash\nnpm test\n# or\nyarn test\n\\`\\`\\`\n\n## 📝 License\n\nThis project is private and proprietary.\n\n---\n\nGenerated on ${timestamp}\n`\n};\n\n// Add parsed files to the structure, overwriting defaults if they exist\nparsedFiles.forEach(file => {\n  // Normalize file path\n  let filePath = file.fileName;\n  if (filePath.startsWith('./')) {\n    filePath = filePath.substring(2);\n  }\n  if (filePath.startsWith('/')) {\n    filePath = filePath.substring(1);\n  }\n  \n  baseStructure[filePath] = file.content;\n});\n\n// Ensure we have at least an App.js file\nif (!baseStructure['App.js'] && !baseStructure['App.jsx'] && \n    !baseStructure['App.ts'] && !baseStructure['App.tsx'] &&\n    !baseStructure['src/App.js'] && !baseStructure['src/App.jsx']) {\n  baseStructure['App.js'] = `import React from 'react';\nimport { StatusBar } from 'expo-status-bar';\nimport { SafeAreaView, View, Text, TouchableOpacity } from 'react-native';\nimport { styled } from 'nativewind';\n\nconst StyledView = styled(View);\nconst StyledText = styled(Text);\nconst StyledTouchableOpacity = styled(TouchableOpacity);\nconst StyledSafeAreaView = styled(SafeAreaView);\n\nexport default function App() {\n  return (\n    <StyledSafeAreaView className=\"flex-1 bg-white\">\n      <StatusBar style=\"auto\" />\n      <StyledView className=\"flex-1 justify-center items-center p-6\">\n        <StyledText className=\"text-3xl font-bold text-gray-800 mb-2\">\n          Welcome to ${projectName}\n        </StyledText>\n        <StyledText className=\"text-lg text-gray-600 text-center mb-8\">\n          Built with React Native + NativeWind\n        </StyledText>\n        <StyledTouchableOpacity \n          className=\"bg-blue-500 px-6 py-3 rounded-lg shadow-lg\"\n          activeOpacity={0.8}\n        >\n          <StyledText className=\"text-white font-semibold text-lg\">\n            Get Started\n          </StyledText>\n        </StyledTouchableOpacity>\n      </StyledView>\n    </StyledSafeAreaView>\n  );\n}`;\n}\n\n// Create placeholder asset files info\nconst assetFiles = [\n  'assets/icon.png',\n  'assets/splash.png',\n  'assets/adaptive-icon.png',\n  'assets/favicon.png'\n];\n\n// Convert structure to files array\nfor (const [path, content] of Object.entries(baseStructure)) {\n  files.push({\n    path,\n    content: typeof content === 'object' ? JSON.stringify(content, null, 2) : content,\n    type: path.endsWith('.json') ? 'json' : 'text'\n  });\n}\n\n// Add asset file placeholders\nassetFiles.forEach(assetPath => {\n  files.push({\n    path: assetPath,\n    content: '[Binary image file - Please add your own image]',\n    type: 'asset'\n  });\n});\n\nreturn {\n  projectName,\n  files,\n  totalFiles: files.length,\n  totalAssets: assetFiles.length,\n  timestamp\n};"
+      },
+      "id": "generate_structure",
+      "name": "Generate Project Structure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1800, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Prepare final response with download capabilities\nconst { projectName, files, totalFiles, totalAssets, timestamp } = $json;\n\n// Create a comprehensive response\nconst response = {\n  success: true,\n  project: {\n    name: projectName,\n    totalFiles: totalFiles,\n    totalAssets: totalAssets,\n    generatedAt: timestamp\n  },\n  message: `✅ React Native project \"${projectName}\" generated successfully!`,\n  \n  // Categorize files for better organization\n  filesByCategory: {\n    config: files.filter(f => \n      ['package.json', 'babel.config.js', 'tailwind.config.js', 'metro.config.js', \n       'app.json', 'tsconfig.json', '.eslintrc.js', '.prettierrc'].includes(f.path)\n    ),\n    source: files.filter(f => \n      f.path.endsWith('.js') || f.path.endsWith('.jsx') || \n      f.path.endsWith('.ts') || f.path.endsWith('.tsx')\n    ).filter(f => !['babel.config.js', 'metro.config.js', '.eslintrc.js'].includes(f.path)),\n    docs: files.filter(f => f.path.endsWith('.md')),\n    assets: files.filter(f => f.type === 'asset'),\n    other: files.filter(f => \n      !['.json', '.js', '.jsx', '.ts', '.tsx', '.md'].some(ext => f.path.endsWith(ext)) &&\n      f.type !== 'asset'\n    )\n  },\n  \n  // All files for download\n  files: files,\n  \n  // Setup instructions\n  setupInstructions: [\n    {\n      step: 1,\n      title: \"Create project directory\",\n      command: `mkdir ${projectName} && cd ${projectName}`\n    },\n    {\n      step: 2,\n      title: \"Save all files\",\n      description: \"Save each file in its specified path within the project directory\"\n    },\n    {\n      step: 3,\n      title: \"Install dependencies\",\n      command: \"npm install\"\n    },\n    {\n      step: 4,\n      title: \"Add assets\",\n      description: \"Add your own icon.png, splash.png, adaptive-icon.png, and favicon.png to the assets folder\"\n    },\n    {\n      step: 5,\n      title: \"Start development\",\n      command: \"npm start\",\n      description: \"This will start Expo. Press 'i' for iOS, 'a' for Android, or 'w' for web\"\n    }\n  ],\n  \n  // NativeWind specific info\n  nativewindInfo: {\n    configured: true,\n    usage: \"Use Tailwind CSS classes directly in className props\",\n    example: '<View className=\"bg-blue-500 p-4 rounded-lg\">',\n    configFile: \"tailwind.config.js\",\n    documentation: \"https://www.nativewind.dev/\"\n  },\n  \n  // Additional resources\n  resources: {\n    expo: \"https://docs.expo.dev/\",\n    reactNative: \"https://reactnative.dev/docs/getting-started\",\n    nativewind: \"https://www.nativewind.dev/\",\n    tailwind: \"https://tailwindcss.com/docs\"\n  },\n  \n  // Metadata\n  metadata: {\n    generatorVersion: \"1.0.0\",\n    workflowName: \"React Native Generator - Claude API\",\n    claudeModel: \"claude-3-opus-20240229\",\n    timestamp: timestamp\n  }\n};\n\nreturn response;"
+      },
+      "id": "prepare_final_response",
+      "name": "Prepare Final Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{JSON.stringify($json, null, 2)}}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "X-Generator",
+                "value": "n8n-react-native-claude"
+              }
+            ]
+          }
+        }
+      },
+      "id": "webhook_response",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2200, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Error handler for any failures in the workflow\nconst error = $input.item.error || {};\nconst errorMessage = error.message || 'An unknown error occurred';\nconst errorDetails = error.description || '';\n\nconst errorResponse = {\n  success: false,\n  error: {\n    message: errorMessage,\n    details: errorDetails,\n    timestamp: new Date().toISOString(),\n    helpText: \"Please check your request and try again. Ensure you have provided a valid prompt.\"\n  },\n  requestInfo: {\n    tip: \"Send a POST request to /generate-app with a JSON body containing 'prompt' and optionally 'projectName'\"\n  }\n};\n\nreturn errorResponse;"
+      },
+      "id": "error_handler",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{JSON.stringify($json, null, 2)}}",
+        "options": {
+          "responseCode": 400,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "error_response",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1200, 500]
+    }
+  ],
+  "connections": {
+    "Webhook: Start Flow": {
+      "main": [
+        [
+          {
+            "node": "Extract Parameters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Parameters": {
+      "main": [
+        [
+          {
+            "node": "Check Google Doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Google Doc": {
+      "main": [
+        [
+          {
+            "node": "Fetch Google Doc",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge Prompts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Google Doc": {
+      "main": [
+        [
+          {
+            "node": "Merge Prompts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Prompts": {
+      "main": [
+        [
+          {
+            "node": "Enhance Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enhance Prompt": {
+      "main": [
+        [
+          {
+            "node": "Claude API Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude API Call": {
+      "main": [
+        [
+          {
+            "node": "Parse Claude Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Claude Response": {
+      "main": [
+        [
+          {
+            "node": "Generate Project Structure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Project Structure": {
+      "main": [
+        [
+          {
+            "node": "Prepare Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Final Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "versionId": "1.0.0",
+  "id": "react-native-generator-claude",
+  "meta": {
+    "instanceId": "n8n-react-native-generator"
+  },
+  "tags": [
+    {
+      "name": "React Native",
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "name": "Claude AI",
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "name": "Code Generation",
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    }
+  ]
+}
