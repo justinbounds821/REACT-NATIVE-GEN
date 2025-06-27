@@ -53,6 +53,43 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 1,
       "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Parse Claude's response\nconst response = $json;\nlet content = '';\n\n// Extract content from Claude's response structure\nif (response.content && Array.isArray(response.content)) {\n  content = response.content\n    .filter(item => item.type === 'text')\n    .map(item => item.text)\n    .join('\\n');\n} else if (response.body && response.body.content) {\n  content = response.body.content[0].text;\n} else if (typeof response === 'string') {\n  content = response;\n}\n\n// Extract code blocks and file structures\nconst codeBlocks = [];\nconst fileRegex = /```(?:jsx?|tsx?|json|js|ts)\\n([\\s\\S]*?)```/g;\nconst fileNameRegex = /\\/\\/ File: (.+?)\\n|\\# File: (.+?)\\n|\\/\\* File: (.+?) \\*\\//;\n\nlet match;\nwhile ((match = fileRegex.exec(content)) !== null) {\n  const code = match[1];\n  const fileNameMatch = code.match(fileNameRegex);\n  const fileName = fileNameMatch ? (fileNameMatch[1] || fileNameMatch[2] || fileNameMatch[3]).trim() : 'unknown.js';\n  \n  codeBlocks.push({\n    fileName,\n    content: code.replace(fileNameRegex, '').trim()\n  });\n}\n\n// If no code blocks found, try to parse the entire content\nif (codeBlocks.length === 0 && content.includes('import React')) {\n  codeBlocks.push({\n    fileName: 'App.js',\n    content: content\n  });\n}\n\nreturn [{ \n  json: { \n    parsedCode: codeBlocks,\n    rawResponse: content,\n    timestamp: new Date().toISOString()\n  } \n}];"
+      },
+      "name": "Parse Claude Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Generate React Native project structure\nconst parsedCode = $json.parsedCode || [];\nconst projectName = 'GeneratedApp';\nconst files = [];\n\n// Basic React Native + NativeWind structure\nconst projectStructure = {\n  'package.json': {\n    \"name\": projectName.toLowerCase(),\n    \"version\": \"0.0.1\",\n    \"private\": true,\n    \"scripts\": {\n      \"android\": \"react-native run-android\",\n      \"ios\": \"react-native run-ios\",\n      \"start\": \"react-native start\",\n      \"test\": \"jest\",\n      \"lint\": \"eslint .\"\n    },\n    \"dependencies\": {\n      \"react\": \"18.2.0\",\n      \"react-native\": \"0.72.6\",\n      \"nativewind\": \"^2.0.11\",\n      \"expo\": \"~49.0.15\",\n      \"expo-camera\": \"~13.4.4\",\n      \"@expo/vector-icons\": \"^13.0.0\",\n      \"react-native-safe-area-context\": \"4.6.3\",\n      \"react-native-screens\": \"~3.22.0\"\n    },\n    \"devDependencies\": {\n      \"@babel/core\": \"^7.20.0\",\n      \"@babel/preset-env\": \"^7.20.0\",\n      \"@babel/runtime\": \"^7.20.0\",\n      \"@react-native/eslint-config\": \"^0.72.2\",\n      \"@react-native/metro-config\": \"^0.72.11\",\n      \"@tsconfig/react-native\": \"^3.0.0\",\n      \"babel-jest\": \"^29.2.1\",\n      \"eslint\": \"^8.19.0\",\n      \"jest\": \"^29.2.1\",\n      \"metro-react-native-babel-preset\": \"0.76.8\",\n      \"prettier\": \"^2.4.1\",\n      \"react-test-renderer\": \"18.2.0\",\n      \"tailwindcss\": \"3.3.0\"\n    },\n    \"engines\": {\n      \"node\": \">=16\"\n    }\n  },\n  'babel.config.js': `module.exports = {\n  presets: ['module:metro-react-native-babel-preset'],\n  plugins: ['nativewind/babel'],\n};`,\n  'tailwind.config.js': `module.exports = {\n  content: [\n    \"./App.{js,jsx,ts,tsx}\",\n    \"./src/**/*.{js,jsx,ts,tsx}\",\n    \"./components/**/*.{js,jsx,ts,tsx}\"\n  ],\n  theme: {\n    extend: {},\n  },\n  plugins: [],\n}`,\n  'metro.config.js': `const { getDefaultConfig } = require('expo/metro-config');\n\nmodule.exports = (() => {\n  const config = getDefaultConfig(__dirname);\n\n  const { transformer, resolver } = config;\n\n  config.transformer = {\n    ...transformer,\n    babelTransformerPath: require.resolve('react-native-svg-transformer'),\n  };\n  config.resolver = {\n    ...resolver,\n    assetExts: resolver.assetExts.filter((ext) => ext !== 'svg'),\n    sourceExts: [...resolver.sourceExts, 'svg'],\n  };\n\n  return config;\n})();`,\n  'app.json': {\n    \"expo\": {\n      \"name\": projectName,\n      \"slug\": projectName.toLowerCase(),\n      \"version\": \"1.0.0\",\n      \"orientation\": \"portrait\",\n      \"icon\": \"./assets/icon.png\",\n      \"userInterfaceStyle\": \"light\",\n      \"splash\": {\n        \"image\": \"./assets/splash.png\",\n        \"resizeMode\": \"contain\",\n        \"backgroundColor\": \"#ffffff\"\n      },\n      \"assetBundlePatterns\": [\n        \"**/*\"\n      ],\n      \"ios\": {\n        \"supportsTablet\": true\n      },\n      \"android\": {\n        \"adaptiveIcon\": {\n          \"foregroundImage\": \"./assets/adaptive-icon.png\",\n          \"backgroundColor\": \"#ffffff\"\n        }\n      },\n      \"web\": {\n        \"favicon\": \"./assets/favicon.png\"\n      }\n    }\n  },\n  '.gitignore': `# OSX\\n#\\n.DS_Store\\n\\n# Xcode\\n#\\nbuild/\\n*.pbxuser\\n!default.pbxuser\\n*.mode1v3\\n!default.mode1v3\\n*.mode2v3\\n!default.mode2v3\\n*.perspectivev3\\n!default.perspectivev3\\nxcuserdata\\n*.xccheckout\\n*.moved-aside\\nDerivedData\\n*.hmap\\n*.ipa\\n*.xcuserstate\\nios/.xcode.env.local\\n\\n# Android/IntelliJ\\n#\\nbuild/\\n.idea\\n.gradle\\nlocal.properties\\n*.iml\\n*.hprof\\n.cxx/\\n\\n# node.js\\n#\\nnode_modules/\\nnpm-debug.log\\nyarn-error.log\\n\\n# fastlane\\n#\\n# It is recommended to not store the screenshots in the git repo. Instead, use fastlane to re-generate the\\n# screenshots whenever they are needed.\\n# For more information about the recommended setup visit:\\n# https://docs.fastlane.tools/best-practices/source-control/\\n\\n**/fastlane/report.xml\\n**/fastlane/Preview.html\\n**/fastlane/screenshots\\n**/fastlane/test_output\\n\\n# Bundle artifact\\n*.jsbundle\\n\\n# Ruby / CocoaPods\\n/ios/Pods/\\n/vendor/bundle/\\n\\n# Temporary files created by Metro to check the health of the file watcher\\n.metro-health-check*\\n\\n# testing\\n/coverage\\n\\n# Yarn\\n.yarn/*\\n!.yarn/patches\\n!.yarn/plugins\\n!.yarn/releases\\n!.yarn/sdks\\n!.yarn/versions`,\n  'README.md': `# ${projectName}\\n\\n## Instalare\\n\\n\\`\\`\\`bash\\nnpm install\\n# sau\\nyarn install\\n\\`\\`\\`\\n\\n## Rulare\\n\\n### iOS\\n\\`\\`\\`bash\\nnpx react-native run-ios\\n\\`\\`\\`\\n\\n### Android\\n\\`\\`\\`bash\\nnpx react-native run-android\\n\\`\\`\\`\\n\\n## Configurare NativeWind\\n\\nProiectul folosește NativeWind pentru stilizare cu Tailwind CSS.\\n\\n## Structură\\n\\n- \\`App.js\\` - Componenta principală\\n- \\`components/\\` - Componente reutilizabile\\n- \\`screens/\\` - Ecrane ale aplicației\\n- \\`utils/\\` - Funcții utilitare\\n`\n};\n\n// Add generated code files\nparsedCode.forEach(file => {\n  projectStructure[file.fileName] = file.content;\n});\n\n// If no App.js was generated, add a default one\nif (!projectStructure['App.js'] && !projectStructure['App.tsx']) {\n  projectStructure['App.js'] = `import React from 'react';\nimport { View, Text, StyleSheet, SafeAreaView } from 'react-native';\n\nexport default function App() {\n  return (\n    <SafeAreaView style={styles.container}>\n      <View style={styles.content}>\n        <Text style={styles.title}>React Native App</Text>\n        <Text style={styles.subtitle}>Generated with n8n + Claude</Text>\n      </View>\n    </SafeAreaView>\n  );\n}\n\nconst styles = StyleSheet.create({\n  container: {\n    flex: 1,\n    backgroundColor: '#fff',\n  },\n  content: {\n    flex: 1,\n    justifyContent: 'center',\n    alignItems: 'center',\n    padding: 20,\n  },\n  title: {\n    fontSize: 24,\n    fontWeight: 'bold',\n    marginBottom: 10,\n  },\n  subtitle: {\n    fontSize: 16,\n    color: '#666',\n  },\n});`;\n}\n\n// Convert to files array\nfor (const [path, content] of Object.entries(projectStructure)) {\n  files.push({\n    path,\n    content: typeof content === 'object' ? JSON.stringify(content, null, 2) : content\n  });\n}\n\nreturn [{ \n  json: { \n    projectName,\n    files,\n    totalFiles: files.length,\n    timestamp: new Date().toISOString()\n  } \n}];"
+      },
+      "name": "Generate Project Structure",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1200, 0]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Create a downloadable archive or return structure\nconst { projectName, files } = $json;\nconst timestamp = new Date().toISOString().replace(/[:.]/g, '-');\n\n// Create response with file structure and download links\nconst response = {\n  success: true,\n  projectName,\n  timestamp,\n  message: `Proiect React Native generat cu succes! ${files.length} fișiere create.`,\n  structure: files.map(f => ({\n    path: f.path,\n    size: f.content.length,\n    preview: f.content.substring(0, 200) + (f.content.length > 200 ? '...' : '')\n  })),\n  files: files,\n  instructions: [\n    \"1. Creați un folder nou pentru proiect\",\n    \"2. Salvați toate fișierele în structura indicată\",\n    \"3. Rulați 'npm install' sau 'yarn install'\",\n    \"4. Pentru iOS: cd ios && pod install\",\n    \"5. Rulați 'npx react-native run-ios' sau 'npx react-native run-android'\"\n  ],\n  nativewindSetup: [\n    \"NativeWind este deja configurat în proiect\",\n    \"Folosiți clase Tailwind direct în componente\",\n    \"Ex: className='bg-blue-500 p-4 rounded-lg'\"\n  ]\n};\n\nreturn [{ json: response }];"
+      },
+      "name": "Prepare Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1400, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1600, 0]
     }
   ],
   "connections": {
@@ -69,6 +106,26 @@
     "Format Prompt + NativeWind": {
       "main": [
         [{ "node": "Claude 4 API", "type": "main", "index": 0 }]
+      ]
+    },
+    "Claude 4 API": {
+      "main": [
+        [{ "node": "Parse Claude Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Claude Response": {
+      "main": [
+        [{ "node": "Generate Project Structure", "type": "main", "index": 0 }]
+      ]
+    },
+    "Generate Project Structure": {
+      "main": [
+        [{ "node": "Prepare Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prepare Response": {
+      "main": [
+        [{ "node": "Respond to Webhook", "type": "main", "index": 0 }]
       ]
     }
   }
