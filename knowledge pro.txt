@@ -1,0 +1,152 @@
+ Brand-Assistant Knowledge Pack • v1.1 
+ Ultima actualizare: 24-Jun-2025
+ Pentru: GPT “Brand-Assistant Dev Guide”
+ Descriere: Template standard, intake schema, WCAG referință, font pairing, 2 exemple de Brand Book (Fintech & E-com). 
+-->
+
+# 1. Brand Book Template
+
+```md
+# [Brand Name] Brand Book
+> v.<x.y.z> · Upd. <DD/MM/YYYY>
+
+## 0. Introducere
+Scopul: standardizează identitatea vizuală & verbală a **[Brand]**.
+
+## 1. Logo
+1.1 Variante: pozitiv / negativ / monogramă.  
+1.2 Clear-space = înălțimea literei **X** (vezi placeholder).  
+1.3 Min-size → print 15 mm, digital 48 px.  
+1.4 Nu întinde, nu recolorează.
+
+## 2. Paleta de culori
+| Rol | HEX | WCAG |
+|----|-----|------|
+| Primar | #004B91 | 4.5 |
+| Secundar | #FFB800 | 3.1 |
+| Neutru BG | #F7F7F7 | — |
+
+## 3. Tipografie
+- **Inter SemiBold** – H1-H3  
+- **Inter Regular** – body  
+- Fallback: `"Inter","Helvetica Neue",Arial,sans-serif`
+
+## 4. Layout & Grid
+Grid 8-pt; margini 24 px desktop / 16 px mobile.
+
+## 5. Imagery & Iconography
+Foto: ton cald; icone stroke 2 px, capete rotunde.
+
+## 6. Tone of Voice
+| Atribut | Descriere | Exemplu |
+|---------|-----------|---------|
+| Clar | Limbaj simplu | „Plătești în 2 clicuri.” |
+| Optimist | Energic | „Împreună creștem!” |
+
+## 7. Motion
+Lottie ≤ 100 KB · durată ≤ 1 s · easing *ease-out*.
+
+## 8. QA & Access
+WCAG AA contrast, font ≥ 16 px, link subliniat.
+
+## 9. Exemple aplicare
+Card vizită, header site, postare social.
+
+## 10. Contact & Governance
+`brand@brand.com` · Slack #brand-support · Review trimestrial
+2. Intake Form Schema (JSON)
+json
+Copy
+Edit
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"Brand Intake",
+  "type":"object",
+  "required":["brand_name","industry","mission","values","deliverables"],
+  "properties":{
+    "brand_name":{"type":"string","minLength":2},
+    "website":{"type":"string","format":"uri"},
+    "industry":{"type":"string"},
+    "mission":{"type":"string","minLength":10},
+    "vision":{"type":"string"},
+    "values":{"type":"array","items":{"type":"string"},"maxItems":5},
+    "audience_segments":{"type":"array","items":{"type":"string"}},
+    "tonality":{"type":"object",
+        "properties":{
+          "formal_casual":{"type":"integer","minimum":1,"maximum":7},
+          "serious_playful":{"type":"integer","minimum":1,"maximum":7},
+          "premium_accessible":{"type":"integer","minimum":1,"maximum":7}
+        }},
+    "differentiators":{"type":"array","items":{"type":"string"},"maxItems":3},
+    "competitors":{"type":"array","items":{"type":"object",
+        "properties":{"name":{"type":"string"},"url":{"type":"string","format":"uri"}},
+        "required":["name"]}},
+    "deliverables":{"type":"array",
+        "items":{"enum":["logo","guideline_visual","brand_book"]}},
+    "deadline":{"type":"string","format":"date"}
+  }
+}
+3. WCAG 2.2 Quick Reference
+Check	AA/AAA	Valoare	Hint
+Contrast text normal	AA	4.5	Font ≥ 16 px
+Contrast text mare ≥ 24 px	AA	3.0	19 px bold ok
+Contrast UI non-text	AA	3.0	Icon/border
+Target tactil minim	AAA	44 px	Mobile
+Focus vizibil	A	1 px	Contrast ≥ 3:1
+Durată animare max	AAA	300 ms	Prefer reduce motion
+
+4. Font Pairing Cheatsheet
+csv
+Copy
+Edit
+Font Primar,Font Secundar,Context
+Inter Bold,Inter Regular,UI general
+Playfair Display,Source Sans Pro,Editorial
+Montserrat SemiBold,Roboto Regular,SaaS
+Poppins Medium,Poppins Light,E-commerce
+Lora Regular,Lato Regular,Blogging
+5. Example Brand Book – Fintech
+md
+Copy
+Edit
+# SwiftPay
+
+## Logo
+Albastru #0050B3, monogramă “SP”.
+
+## Culori
+Prima #0050B3 · Accent #00C2E0 · Pozitiv #22B14C · Alertă #E03333
+
+## Fonts
+IBM Plex Sans Bold / Regular
+
+## Tone
+Siguranță + simplitate tehnică.
+
+## Layout
+Dashboard clean, carduri 12-col.
+6. Example Brand Book – E-commerce
+md
+Copy
+Edit
+# Shoparoo
+
+## Logo
+Color full · safe-zone = ½ înălțime “S”.
+
+## Culori
+Primar #FF6F3C · Secundar #00B28F · Grey #333333 / #F2F2F2
+
+## Fonts
+Poppins SemiBold / Regular
+
+## Tone
+Prietenos, energic, max 2 emoji/post.
+
+## QA
+Contrast #FF6F3C pe alb ≥ 4.7 · radius buton 8 px.
+<!-- EOF -->
+markdown
+Copy
+Edit
+

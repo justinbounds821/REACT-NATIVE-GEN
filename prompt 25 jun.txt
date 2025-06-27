@@ -1,0 +1,1 @@
+genereaza mi o app complet functionala in react native dupa analiza completa si corecta a acestei descrieri

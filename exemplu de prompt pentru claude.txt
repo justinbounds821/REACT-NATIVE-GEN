@@ -1,0 +1,67 @@
+Prompt ideal pentru Claude în workflow profesional
+text
+Copy
+Edit
+Creează o aplicație React Native cu Expo care conține următoarele:
+
+🧩 FUNCȚIONALITĂȚI:
+1. Ecran de autentificare cu:
+   - două câmpuri: `email`, `parolă`
+   - validare locală
+   - alertă dacă inputul este invalid
+   - loader în timpul autentificării
+   - mesaj de succes
+
+🎨 UI/UX:
+- Folosește `react-native-paper` pentru componente UI (inputuri, buton, snackbar)
+- Folosește `NativeWind` pentru stilizare (echivalent TailwindCSS)
+- Adaugă padding, spacing și layout responsive (folosește `ScrollView` dacă e nevoie)
+
+📁 STRUCTURA FOLDERE:
+- `App.js` (entry point)
+- `screens/LoginScreen.js` – UI logică completă
+- `components/InputField.js` – componentă reutilizabilă pentru câmpuri
+- `utils/validateEmail.js` – funcție de validare email
+- `styles/global.js` – dacă vrei să centralizezi stiluri comune
+
+🧪 TESTARE:
+- Creează `__tests__/validateEmail.test.js` cu test pentru funcția `validateEmail`
+- Folosește `jest` ca framework de testare
+
+📦 OUTPUT:
+- Returnează fiecare fișier separat:
+📄 App.js:
+
+js
+Copy
+Edit
+// cod aici
+📄 screens/LoginScreen.js:
+
+js
+Copy
+Edit
+// cod aici
+📄 components/InputField.js:
+
+js
+Copy
+Edit
+// cod aici
+📄 utils/validateEmail.js:
+
+js
+Copy
+Edit
+// cod aici
+📄 tests/validateEmail.test.js:
+
+js
+Copy
+Edit
+// cod aici
+📦 INSTRUCȚIUNI DE RULARE:
+
+Comenzi: npm install, npx expo start --tunnel
+
+App compatibilă cu Expo Go

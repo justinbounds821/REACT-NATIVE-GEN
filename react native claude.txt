@@ -1,0 +1,1396 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  TextInput, 
+  ScrollView, 
+  Alert, 
+  Image, 
+  Modal,
+  ActivityIndicator,
+  SafeAreaView,
+  StatusBar,
+  Animated,
+  Dimensions
+} from 'react-native';
+import { Camera, CameraType } from 'expo-camera';
+import { Ionicons } from '@expo/vector-icons';
+
+const { width, height } = Dimensions.get('window');
+
+// Componente utilitare
+const LoadingSpinner = () => (
+  <View style={styles.loadingContainer}>
+    <ActivityIndicator size="large" color="#6366f1" />
+    <Text style={styles.loadingText}>Se încarcă...</Text>
+  </View>
+);
+
+const Badge = ({ title, icon, earned = false }) => {
+  const scale = useRef(new Animated.Value(earned ? 1 : 0.8)).current;
+  
+  useEffect(() => {
+    if (earned) {
+      Animated.spring(scale, {
+        toValue: 1,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [earned]);
+
+  return (
+    <Animated.View style={[styles.badge, { transform: [{ scale }] }]}>
+      <Ionicons name={icon} size={24} color={earned ? "#10b981" : "#9ca3af"} />
+      <Text style={[styles.badgeText, { color: earned ? "#10b981" : "#9ca3af" }]}>
+        {title}
+      </Text>
+    </Animated.View>
+  );
+};
+
+const ProgressBar = ({ current, target, label }) => {
+  const progress = Math.min(current / target, 1);
+  
+  return (
+    <View style={styles.progressContainer}>
+      <Text style={styles.progressLabel}>{label}</Text>
+      <View style={styles.progressBarBg}>
+        <View style={[styles.progressBarFill, { width: `${progress * 100}%` }]} />
+      </View>
+      <Text style={styles.progressText}>{current}/{target} puncte</Text>
+    </View>
+  );
+};
+
+const CampaignCard = ({ campaign, onAccept }) => (
+  <View style={styles.campaignCard}>
+    <View style={styles.campaignHeader}>
+      <Text style={styles.campaignTitle}>{campaign.title}</Text>
+      <Text style={styles.campaignPoints}>+{campaign.points} puncte</Text>
+    </View>
+    <Text style={styles.campaignDescription}>{campaign.description}</Text>
+    <View style={styles.campaignDetails}>
+      <Text style={styles.campaignDetail}>📍 {campaign.location}</Text>
+      <Text style={styles.campaignDetail}>⏰ {campaign.duration}</Text>
+    </View>
+    <TouchableOpacity 
+      style={styles.acceptButton} 
+      onPress={() => onAccept(campaign)}
+    >
+      <Text style={styles.acceptButtonText}>Acceptă campania</Text>
+    </TouchableOpacity>
+  </View>
+);
+
+const ServiceCard = ({ service, onRequest, points }) => (
+  <View style={styles.serviceCard}>
+    <Ionicons name={service.icon} size={32} color="#6366f1" />
+    <Text style={styles.serviceTitle}>{service.title}</Text>
+    <Text style={styles.serviceDescription}>{service.description}</Text>
+    <Text style={styles.servicePrice}>{service.price} puncte</Text>
+    <TouchableOpacity 
+      style={[
+        styles.requestButton,
+        { opacity: points >= service.price ? 1 : 0.5 }
+      ]} 
+      onPress={() => onRequest(service)}
+      disabled={points < service.price}
+    >
+      <Text style={styles.requestButtonText}>Solicită</Text>
+    </TouchableOpacity>
+  </View>
+);
+
+// Aplicația principală
+export default function PromovistaApp() {
+  const [currentScreen, setCurrentScreen] = useState('auth');
+  const [user, setUser] = useState(null);
+  const [points, setPoints] = useState(250);
+  const [pendingPoints, setPendingPoints] = useState(75);
+  const [activeTab, setActiveTab] = useState('earn');
+  const [activeCampaigns, setActiveCampaigns] = useState([]);
+  const [completedCampaigns, setCompletedCampaigns] = useState(0);
+  const [showCamera, setShowCamera] = useState(false);
+  const [currentCampaign, setCurrentCampaign] = useState(null);
+  const [cameraPermission, setCameraPermission] = useState(false);
+  const [photoResult, setPhotoResult] = useState(null);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [verificationStep, setVerificationStep] = useState(false);
+  const [companyData, setCompanyData] = useState({
+    name: '',
+    cui: '',
+    iban: '',
+    address: ''
+  });
+  const [showProfile, setShowProfile] = useState(false);
+
+  // Date mock
+  const availableCampaigns = [
+    {
+      id: 1,
+      title: "Produse lactate BioNatura",
+      description: "Expune 3 produse BioNatura pe raftul de lactate",
+      points: 150,
+      location: "București",
+      duration: "7 zile",
+      agent: "Maria Popescu"
+    },
+    {
+      id: 2,
+      title: "Snacks-uri sănătoase",
+      description: "Poziționează produsele la nivelul ochilor",
+      points: 100,
+      location: "Sector 1-6",
+      duration: "5 zile",
+      agent: "Ion Georgescu"
+    },
+    {
+      id: 3,
+      title: "Băuturi energizante premium",
+      description: "Creează un display special lângă casa de marcat",
+      points: 200,
+      location: "Centrul vechi",
+      duration: "10 zile",
+      agent: "Ana Dumitrescu"
+    }
+  ];
+
+  const services = [
+    {
+      id: 1,
+      title: "Site web profesional",
+      description: "Site responsive cu catalog produse",
+      price: 500,
+      icon: "globe-outline"
+    },
+    {
+      id: 2,
+      title: "Modul ERP",
+      description: "Gestionarea stocului și vânzărilor",
+      price: 300,
+      icon: "bar-chart-outline"
+    },
+    {
+      id: 3,
+      title: "Publicitate online",
+      description: "Campanie Google Ads pentru 30 zile",
+      price: 200,
+      icon: "megaphone-outline"
+    }
+  ];
+
+  useEffect(() => {
+    requestCameraPermission();
+  }, []);
+
+  const requestCameraPermission = async () => {
+    try {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      setCameraPermission(status === 'granted');
+    } catch (error) {
+      console.log('Eroare la solicitarea permisiunii pentru cameră:', error);
+    }
+  };
+
+  const handleLogin = async () => {
+    if (!verificationStep) {
+      if (phoneNumber.length < 10) {
+        Alert.alert('Eroare', 'Vă rugăm să introduceți un număr de telefon valid');
+        return;
+      }
+      setLoading(true);
+      // Simulare trimitere SMS
+      setTimeout(() => {
+        setLoading(false);
+        setVerificationStep(true);
+        Alert.alert('Succes', 'Codul de verificare a fost trimis prin SMS');
+      }, 1500);
+    } else {
+      if (verificationCode.length !== 4) {
+        Alert.alert('Eroare', 'Codul de verificare trebuie să aibă 4 cifre');
+        return;
+      }
+      setLoading(true);
+      // Simulare verificare cod
+      setTimeout(() => {
+        setLoading(false);
+        setUser({ phone: phoneNumber });
+        setCurrentScreen('setup');
+      }, 1000);
+    }
+  };
+
+  const handleSetupComplete = () => {
+    if (!companyData.name || !companyData.cui || !companyData.iban) {
+      Alert.alert('Eroare', 'Vă rugăm să completați toate câmpurile obligatorii');
+      return;
+    }
+    setCurrentScreen('main');
+  };
+
+  const handleAcceptCampaign = (campaign) => {
+    Alert.alert(
+      'Confirmare',
+      `Acceptați campania "${campaign.title}"?\n\nVeți fi contactat de agentul ${campaign.agent} pentru detalii despre livrare.`,
+      [
+        { text: 'Anulează', style: 'cancel' },
+        { 
+          text: 'Accept', 
+          onPress: () => {
+            setActiveCampaigns([...activeCampaigns, campaign]);
+            Alert.alert('Succes', 'Campania a fost acceptată! Veți fi contactat în curând.');
+          }
+        }
+      ]
+    );
+  };
+
+  const handleTakePhoto = (campaign) => {
+    if (!cameraPermission) {
+      Alert.alert('Eroare', 'Nu avem permisiunea de a accesa camera');
+      return;
+    }
+    setCurrentCampaign(campaign);
+    setShowCamera(true);
+  };
+
+  const simulatePhotoAnalysis = () => {
+    setLoading(true);
+    setShowCamera(false);
+    
+    // Simulare analiza AI
+    setTimeout(() => {
+      const success = Math.random() > 0.3; // 70% șanse de succes
+      
+      if (success) {
+        setPhotoResult({
+          success: true,
+          message: "Produs detectat cu succes!",
+          points: currentCampaign.points,
+          hint: ""
+        });
+        setPendingPoints(prev => prev + currentCampaign.points);
+        setActiveCampaigns(prev => prev.filter(c => c.id !== currentCampaign.id));
+        setCompletedCampaigns(prev => prev + 1);
+      } else {
+        const hints = [
+          "Produsul nu este la nivelul ochilor",
+          "Încadrați întregul raft în fotografie",
+          "Asigurați-vă că produsul este vizibil complet",
+          "Iluminarea este insuficientă"
+        ];
+        setPhotoResult({
+          success: false,
+          message: "Fotografia nu îndeplinește criteriile",
+          points: 0,
+          hint: hints[Math.floor(Math.random() * hints.length)]
+        });
+      }
+      
+      setLoading(false);
+      setShowPhotoModal(true);
+    }, 2000);
+  };
+
+  const handleCashOut = () => {
+    if (points < 100) {
+      Alert.alert('Eroare', 'Minimul pentru retragere este 100 de puncte');
+      return;
+    }
+    
+    Alert.alert(
+      'Confirmare retragere',
+      `Doriți să retrageți ${points} puncte (${points} lei)?\n\nComision: ${Math.ceil(points * 0.01)} lei\nSumeava primită: ${points - Math.ceil(points * 0.01)} lei`,
+      [
+        { text: 'Anulează', style: 'cancel' },
+        { 
+          text: 'Confirm', 
+          onPress: () => {
+            setPoints(0);
+            Alert.alert('Succes', 'Cererea de retragere a fost procesată. Banii vor ajunge în contul dumneavoastră în maximum 3 zile lucrătoare.');
+          }
+        }
+      ]
+    );
+  };
+
+  const handleTopUp = () => {
+    Alert.alert(
+      'Adaugă puncte',
+      'Doriți să adăugați puncte în cont?',
+      [
+        { text: 'Anulează', style: 'cancel' },
+        { 
+          text: '50 puncte (50 lei)', 
+          onPress: () => {
+            setPoints(prev => prev + 50);
+            Alert.alert('Succes', '50 de puncte au fost adăugate în cont!');
+          }
+        },
+        { 
+          text: '100 puncte (100 lei)', 
+          onPress: () => {
+            setPoints(prev => prev + 100);
+            Alert.alert('Succes', '100 de puncte au fost adăugate în cont!');
+          }
+        }
+      ]
+    );
+  };
+
+  const handleRequestService = (service) => {
+    if (points < service.price) {
+      Alert.alert('Eroare', 'Nu aveți suficiente puncte pentru acest serviciu');
+      return;
+    }
+    
+    Alert.alert(
+      'Confirmare',
+      `Doriți să solicitați "${service.title}" pentru ${service.price} puncte?`,
+      [
+        { text: 'Anulează', style: 'cancel' },
+        { 
+          text: 'Confirm', 
+          onPress: () => {
+            setPoints(prev => prev - service.price);
+            Alert.alert('Succes', 'Serviciul a fost solicitat! Veți fi contactat pentru detalii.');
+          }
+        }
+      ]
+    );
+  };
+
+  // Ecran de autentificare
+  if (currentScreen === 'auth') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.authContainer}>
+          <View style={styles.logoContainer}>
+            <View style={styles.logo}>
+              <Text style={styles.logoText}>P</Text>
+            </View>
+            <Text style={styles.appTitle}>Promovista</Text>
+            <Text style={styles.appSubtitle}>Câștigă puncte expunând produse</Text>
+          </View>
+          
+          <View style={styles.authForm}>
+            {!verificationStep ? (
+              <>
+                <Text style={styles.authLabel}>Numărul de telefon</Text>
+                <TextInput
+                  style={styles.authInput}
+                  placeholder="07XXXXXXXX"
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                />
+                <TouchableOpacity 
+                  style={styles.authButton} 
+                  onPress={handleLogin}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <Text style={styles.authButtonText}>Trimite cod SMS</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.authLabel}>Codul de verificare</Text>
+                <Text style={styles.authHint}>Introduceți codul primit prin SMS</Text>
+                <TextInput
+                  style={styles.authInput}
+                  placeholder="0000"
+                  value={verificationCode}
+                  onChangeText={setVerificationCode}
+                  keyboardType="number-pad"
+                  maxLength={4}
+                />
+                <TouchableOpacity 
+                  style={styles.authButton} 
+                  onPress={handleLogin}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <Text style={styles.authButtonText}>Verifică</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setVerificationStep(false)}>
+                  <Text style={styles.backButton}>← Înapoi</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Ecran de configurare
+  if (currentScreen === 'setup') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <ScrollView style={styles.setupContainer}>
+          <Text style={styles.setupTitle}>Configurare magazin</Text>
+          <Text style={styles.setupSubtitle}>Completați datele firmei pentru a putea primi plăți</Text>
+          
+          <View style={styles.setupForm}>
+            <Text style={styles.setupLabel}>Numele firmei *</Text>
+            <TextInput
+              style={styles.setupInput}
+              placeholder="Ex: Magazin Alimentar SRL"
+              value={companyData.name}
+              onChangeText={(text) => setCompanyData({...companyData, name: text})}
+            />
+            
+            <Text style={styles.setupLabel}>CUI *</Text>
+            <TextInput
+              style={styles.setupInput}
+              placeholder="Ex: RO12345678"
+              value={companyData.cui}
+              onChangeText={(text) => setCompanyData({...companyData, cui: text})}
+            />
+            
+            <Text style={styles.setupLabel}>IBAN *</Text>
+            <TextInput
+              style={styles.setupInput}
+              placeholder="Ex: RO49AAAA1B31007593840000"
+              value={companyData.iban}
+              onChangeText={(text) => setCompanyData({...companyData, iban: text})}
+            />
+            
+            <Text style={styles.setupLabel}>Adresa</Text>
+            <TextInput
+              style={styles.setupInput}
+              placeholder="Ex: Str. Exemplu nr. 1, București"
+              value={companyData.address}
+              onChangeText={(text) => setCompanyData({...companyData, address: text})}
+              multiline
+            />
+            
+            <TouchableOpacity style={styles.setupButton} onPress={handleSetupComplete}>
+              <Text style={styles.setupButtonText}>Finalizează configurarea</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // Camera pentru fotografii
+  if (showCamera) {
+    return (
+      <View style={styles.cameraContainer}>
+        <StatusBar hidden />
+        <Camera style={styles.camera} type={CameraType.back}>
+          <View style={styles.cameraOverlay}>
+            <View style={styles.cameraHeader}>
+              <TouchableOpacity 
+                style={styles.closeButton}
+                onPress={() => setShowCamera(false)}
+              >
+                <Ionicons name="close" size={24} color="white" />
+              </TouchableOpacity>
+              <Text style={styles.cameraTitle}>Fotografiați raftul</Text>
+            </View>
+            
+            <View style={styles.cameraGuide}>
+              <View style={styles.guideBorder} />
+              <Text style={styles.guideText}>
+                Încadrați întregul raft în conturul verde
+              </Text>
+            </View>
+            
+            <View style={styles.cameraActions}>
+              <TouchableOpacity 
+                style={styles.captureButton}
+                onPress={simulatePhotoAnalysis}
+              >
+                <View style={styles.captureButtonInner} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Camera>
+      </View>
+    );
+  }
+
+  // Ecranul principal
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.headerTitle}>Bună ziua!</Text>
+          <Text style={styles.headerSubtitle}>{companyData.name}</Text>
+        </View>
+        <TouchableOpacity 
+          style={styles.profileButton}
+          onPress={() => setShowProfile(true)}
+        >
+          <Ionicons name="person-circle-outline" size={32} color="#6366f1" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Wallet Info */}
+      <View style={styles.walletContainer}>
+        <View style={styles.walletCard}>
+          <Text style={styles.walletLabel}>Puncte disponibile</Text>
+          <Text style={styles.walletAmount}>{points}</Text>
+          <Text style={styles.walletEquivalent}>≈ {points} lei</Text>
+          {pendingPoints > 0 && (
+            <Text style={styles.pendingPoints}>
+              +{pendingPoints} puncte în așteptare
+            </Text>
+          )}
+          <View style={styles.walletActions}>
+            <TouchableOpacity style={styles.topUpButton} onPress={handleTopUp}>
+              <Ionicons name="add" size={16} color="#6366f1" />
+              <Text style={styles.topUpText}>Adaugă</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cashOutButton} onPress={handleCashOut}>
+              <Ionicons name="card" size={16} color="white" />
+              <Text style={styles.cashOutText}>Retrage</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      {/* Gamification */}
+      <View style={styles.gamificationContainer}>
+        <Badge 
+          title="Prima campanie" 
+          icon="trophy" 
+          earned={completedCampaigns > 0} 
+        />
+        <ProgressBar 
+          current={points + pendingPoints} 
+          target={500} 
+          label="Progres către bonus" 
+        />
+      </View>
+
+      {/* Tab Navigation */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'earn' && styles.activeTab]}
+          onPress={() => setActiveTab('earn')}
+        >
+          <Text style={[styles.tabText, activeTab === 'earn' && styles.activeTabText]}>
+            Câștigă
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'spend' && styles.activeTab]}
+          onPress={() => setActiveTab('spend')}
+        >
+          <Text style={[styles.tabText, activeTab === 'spend' && styles.activeTabText]}>
+            Cheltuie
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Tab Content */}
+      <ScrollView style={styles.tabContent}>
+        {activeTab === 'earn' ? (
+          <View>
+            {/* Campanii active */}
+            {activeCampaigns.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Campanii active</Text>
+                {activeCampaigns.map(campaign => (
+                  <View key={campaign.id} style={styles.activeCampaignCard}>
+                    <Text style={styles.activeCampaignTitle}>{campaign.title}</Text>
+                    <Text style={styles.activeCampaignAgent}>Agent: {campaign.agent}</Text>
+                    <TouchableOpacity 
+                      style={styles.photoButton}
+                      onPress={() => handleTakePhoto(campaign)}
+                    >
+                      <Ionicons name="camera" size={20} color="white" />
+                      <Text style={styles.photoButtonText}>Fotografiază</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+            
+            {/* Campanii disponibile */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Campanii disponibile</Text>
+              {availableCampaigns
+                .filter(c => !activeCampaigns.some(ac => ac.id === c.id))
+                .map(campaign => (
+                  <CampaignCard 
+                    key={campaign.id} 
+                    campaign={campaign} 
+                    onAccept={handleAcceptCampaign}
+                  />
+                ))}
+            </View>
+          </View>
+        ) : (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Servicii disponibile</Text>
+            {services.map(service => (
+              <ServiceCard 
+                key={service.id} 
+                service={service} 
+                onRequest={handleRequestService}
+                points={points}
+              />
+            ))}
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Modal rezultat fotografie */}
+      <Modal
+        visible={showPhotoModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowPhotoModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.photoResultModal}>
+            <View style={styles.photoResultHeader}>
+              <Ionicons 
+                name={photoResult?.success ? "checkmark-circle" : "close-circle"} 
+                size={48} 
+                color={photoResult?.success ? "#10b981" : "#ef4444"} 
+              />
+              <Text style={[
+                styles.photoResultTitle,
+                { color: photoResult?.success ? "#10b981" : "#ef4444" }
+              ]}>
+                {photoResult?.message}
+              </Text>
+            </View>
+            
+            {photoResult?.success ? (
+              <Text style={styles.photoResultPoints}>
+                +{photoResult.points} puncte câștigate!
+              </Text>
+            ) : (
+              <Text style={styles.photoResultHint}>
+                💡 {photoResult?.hint}
+              </Text>
+            )}
+            
+            <TouchableOpacity 
+              style={styles.photoResultButton}
+              onPress={() => setShowPhotoModal(false)}
+            >
+              <Text style={styles.photoResultButtonText}>
+                {photoResult?.success ? 'Minunat!' : 'Încearcă din nou'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal profil */}
+      <Modal
+        visible={showProfile}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowProfile(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.profileModal}>
+            <View style={styles.profileHeader}>
+              <Text style={styles.profileTitle}>Profilul meu</Text>
+              <TouchableOpacity onPress={() => setShowProfile(false)}>
+                <Ionicons name="close" size={24} color="#6b7280" />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileLabel}>Firma</Text>
+              <Text style={styles.profileValue}>{companyData.name}</Text>
+              
+              <Text style={styles.profileLabel}>CUI</Text>
+              <Text style={styles.profileValue}>{companyData.cui}</Text>
+              
+              <Text style={styles.profileLabel}>Telefon</Text>
+              <Text style={styles.profileValue}>{user?.phone}</Text>
+              
+              <Text style={styles.profileLabel}>Campanii completate</Text>
+              <Text style={styles.profileValue}>{completedCampaigns}</Text>
+            </View>
+            
+            <View style={styles.profileTips}>
+              <Text style={styles.tipsTitle}>💡 Sfaturi rapide</Text>
+              <Text style={styles.tipText}>• Poziționați produsele la nivelul ochilor pentru vizibilitate maximă</Text>
+              <Text style={styles.tipText}>• Folosiți iluminare bună când fotografiați raftul</Text>
+              <Text style={styles.tipText}>• Verificați că toate produsele sunt vizibile în fotografie</Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Loading overlay */}
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <LoadingSpinner />
+        </View>
+      )}
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
+  
+  // Auth styles
+  authContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 48,
+  },
+  logo: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#6366f1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  logoText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  appTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 8,
+  },
+  appSubtitle: {
+    fontSize: 16,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+  authForm: {
+    gap: 16,
+  },
+  authLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  authHint: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginTop: -8,
+  },
+  authInput: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    backgroundColor: 'white',
+  },
+  authButton: {
+    backgroundColor: '#6366f1',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  authButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  backButton: {
+    color: '#6366f1',
+    textAlign: 'center',
+    marginTop: 16,
+    fontSize: 16,
+  },
+
+  // Setup styles
+  setupContainer: {
+    flex: 1,
+    padding: 24,
+  },
+  setupTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 8,
+  },
+  setupSubtitle: {
+    fontSize: 16,
+    color: '#6b7280',
+    marginBottom: 32,
+  },
+  setupForm: {
+    gap: 20,
+  },
+  setupLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  setupInput: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    backgroundColor: 'white',
+  },
+  setupButton: {
+    backgroundColor: '#6366f1',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  setupButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  // Main app styles
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 24,
+    paddingBottom: 16,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1f2937',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  profileButton: {
+    padding: 4,
+  },
+
+  // Wallet styles
+  walletContainer: {
+    paddingHorizontal: 24,
+    marginBottom: 16,
+  },
+  walletCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  walletLabel: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginBottom: 8,
+  },
+  walletAmount: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#1f2937',
+  },
+  walletEquivalent: {
+    fontSize: 16,
+    color: '#6b7280',
+    marginBottom: 8,
+  },
+  pendingPoints: {
+    fontSize: 12,
+    color: '#f59e0b',
+    marginBottom: 16,
+  },
+  walletActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  topUpButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 4,
+  },
+  topUpText: {
+    color: '#6366f1',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  cashOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#6366f1',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 4,
+  },
+  cashOutText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+
+  // Gamification styles
+  gamificationContainer: {
+    paddingHorizontal: 24,
+    marginBottom: 16,
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+    gap: 8,
+  },
+  badgeText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  progressContainer: {
+    backgroundColor: 'white',
+    padding: 16,
+    borderRadius: 12,
+  },
+  progressLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  progressBarBg: {
+    height: 8,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#10b981',
+    borderRadius: 4,
+  },
+  progressText: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+
+  // Tab styles
+  tabContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 24,
+    marginBottom: 16,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 12,
+    padding: 4,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  activeTab: {
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  tabText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  activeTabText: {
+    color: '#6366f1',
+  },
+
+  // Content styles
+  tabContent: {
+    flex: 1,
+    paddingHorizontal: 24,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 16,
+  },
+
+  // Campaign styles
+  campaignCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  campaignHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  campaignTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    flex: 1,
+    marginRight: 12,
+  },
+  campaignPoints: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#10b981',
+  },
+  campaignDescription: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  campaignDetails: {
+    marginBottom: 16,
+  },
+  campaignDetail: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginBottom: 4,
+  },
+  acceptButton: {
+    backgroundColor: '#6366f1',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+  },
+  acceptButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+
+  // Active campaign styles
+  activeCampaignCard: {
+    backgroundColor: '#fef3c7',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#fbbf24',
+  },
+  activeCampaignTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#92400e',
+    marginBottom: 8,
+  },
+  activeCampaignAgent: {
+    fontSize: 14,
+    color: '#b45309',
+    marginBottom: 16,
+  },
+  photoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f59e0b',
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+    justifyContent: 'center',
+  },
+  photoButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+
+  // Service styles
+  serviceCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  serviceTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginTop: 12,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  serviceDescription: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  servicePrice: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#6366f1',
+    marginBottom: 16,
+  },
+  requestButton: {
+    backgroundColor: '#6366f1',
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+  },
+  requestButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+
+  // Camera styles
+  cameraContainer: {
+    flex: 1,
+    backgroundColor: 'black',
+  },
+  camera: {
+    flex: 1,
+  },
+  cameraOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  cameraHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    paddingTop: 50,
+  },
+  closeButton: {
+    padding: 8,
+    marginRight: 16,
+  },
+  cameraTitle: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  cameraGuide: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  guideBorder: {
+    width: width * 0.8,
+    height: height * 0.4,
+    borderWidth: 3,
+    borderColor: '#10b981',
+    borderRadius: 12,
+    borderStyle: 'dashed',
+    marginBottom: 20,
+  },
+  guideText: {
+    color: 'white',
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  cameraActions: {
+    alignItems: 'center',
+    paddingBottom: 40,
+  },
+  captureButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  captureButtonInner: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'white',
+  },
+
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoResultModal: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 32,
+    margin: 24,
+    alignItems: 'center',
+    maxWidth: 320,
+  },
+  photoResultHeader: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  photoResultTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  photoResultPoints: {
+    fontSize: 16,
+    color: '#10b981',
+    fontWeight: '600',
+    marginBottom: 24,
+  },
+  photoResultHint: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  photoResultButton: {
+    backgroundColor: '#6366f1',
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
+  photoResultButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+
+  // Profile modal styles
+  profileModal: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    margin: 24,
+    maxHeight: height * 0.8,
+  },
+  profileHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  profileTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1f2937',
+  },
+  profileInfo: {
+    padding: 24,
+  },
+  profileLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginBottom: 4,
+    marginTop: 16,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  profileValue: {
+    fontSize: 16,
+    color: '#1f2937',
+    fontWeight: '500',
+  },
+  profileTips: {
+    backgroundColor: '#f8fafc',
+    padding: 24,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+  },
+  tipsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 12,
+  },
+  tipText: {
+    fontSize: 14,
+    color: '#6b7280',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+
+  // Loading styles
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6b7280',
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});

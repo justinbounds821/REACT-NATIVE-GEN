@@ -1,0 +1,2 @@
+Vreau o aplicație React Native care are login, form cu 2 câmpuri, validare și UI modern.
+Folosim NativeWind și Paper. Structura clară, fișiere separate. Returnează tot + comenzi finale.

@@ -1,0 +1,20 @@
+3️⃣", "Nod": "Format Claude Prompt", "Tip Nod": "Function", "Funcție": "Transformă instrucțiuni brute în prompt Claude 4 : const raw = $json["body"] || "";
+
+let promptClean = raw
+  .replace(/^\s+|\s+$/g, "")                // Trim global
+  .replace(/\r\n/g, "\n")                   // Normalizează linii
+  .replace(/\n{3,}/g, "\n\n")               // Max 2 linii goale
+  .replace(/<!--[\s\S]*?-->/g, "")          // Elimină comentarii HTML
+  .trim();
+
+if (!promptClean.toLowerCase().includes("creează") && !promptClean.includes("```")) {
+  promptClean = `Creează o aplicație completă pe baza instrucțiunilor următoare:\n\n${promptClean}`;
+}
+
+return [
+  {
+    json: {
+      prompt_clean: promptClean
+    }
+  }
+];

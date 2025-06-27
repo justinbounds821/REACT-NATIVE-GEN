@@ -1,0 +1,75 @@
+{
+  "name": "React Native Generator - Claude 4",
+  "nodes": [
+    {
+      "parameters": {     
+        "path": "generate-app",
+        "method": "POST"
+      },
+      "name": "Webhook: Start Flow",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://docs.google.com/document/d/EXEMPLU_ID/export?format=txt",
+        "responseFormat": "string"
+      },
+      "name": "HTTP Request: Get Prompt/Docx",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "functionCode": "let prompt = $json[\"body\"] || $json[\"data\"] || '';\nif (!prompt.toLowerCase().includes(\"nativewind\")) {\n  prompt += \"\\n\\nAsigură-te că folosești NativeWind pentru stilizare (config corect în babel.config.js și tailwind.config.js).\";\n}\nreturn [{ json: { prompt_clean: prompt } }];"
+      },
+      "name": "Format Prompt + NativeWind",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://api.anthropic.com/v1/messages",
+        "method": "POST",
+        "headers": [
+          { "name": "x-api-key", "value": "API_KEY" },
+          { "name": "anthropic-version", "value": "2023-06-01" },
+          { "name": "content-type", "value": "application/json" }
+        ],
+        "bodyParametersUi": {
+          "parameter": [
+            { "name": "model", "value": "claude-3-opus-20240229" },
+            { "name": "max_tokens", "value": 4096 },
+            { "name": "temperature", "value": 0.2 },
+            { "name": "tools", "value": "[\"code\", \"files\", \"execute_code\"]" },
+            { "name": "messages", "value": "[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"{{$json[\\\"prompt_clean\\\"]}}\"}]}]" }
+          ]
+        }
+      },
+      "name": "Claude 4 API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [800, 0]
+    }
+  ],
+  "connections": {
+    "Webhook: Start Flow": {
+      "main": [
+        [{ "node": "HTTP Request: Get Prompt/Docx", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP Request: Get Prompt/Docx": {
+      "main": [
+        [{ "node": "Format Prompt + NativeWind", "type": "main", "index": 0 }]
+      ]
+    },
+    "Format Prompt + NativeWind": {
+      "main": [
+        [{ "node": "Claude 4 API", "type": "main", "index": 0 }]
+      ]
+    }
+  }
+}

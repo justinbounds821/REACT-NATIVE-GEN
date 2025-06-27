@@ -1,0 +1,98 @@
+ Cum funcționează Claude ca agent de codare autonom 🧠
+Claude Opus/Sonnet sunt modele LLM care pot înțelege proiecte complexe, naviga prin fișiere și genera cod structurat pentru ore întregi (ex: 7h cu Rocketin). Pot gestiona „to-do lists” și își auto-întrețin progresul pas cu pas.
+
+Elementele cheie:
+
+Files API – acces la fișierele proiectului, citire/scriere de cod și structuri de directoare.
+
+Code Execution Tool – posibilitatea de a rula scripturi, testa și corecta cod în ciclu automat.
+
+Web Search / Citations – pentru a încorpora informații actualizate.
+
+MCP (Model Context Protocol) – conectează modelul la sisteme business via API contextuale (ex: Thomson Reuters).
+
+2. Cum construim un agent de codare Claude + n8n
+🔧 Setup tehnic
+Claude API – obții cheie API de la Anthropic.
+
+n8n – platformă de workflow no-code/low-code care rulează pe Docker/VPS. Permite crearea de fluxuri automate.
+
+Mediu unde rulăm și testăm cod – cont Docker sau VM; CLI (Node.js, Python etc.).
+
+📌 Flux de lucru în n8n
+Trigger – inițiat manual, periodic (cron) sau prin webhook (ex: GitHub event).
+
+HTTP Request către Claude:
+
+Include fișierele relevante (ex. cod curent, package.json, README).
+
+Prompt extins, structurat: „Analizează repo, planifică-o, scrie funcționalitatea X, generează cod și teste.”
+
+Claude returnează:
+
+Lista de taskuri („to-dos”),
+
+Cod sursă,
+
+Comenzi de testare/compilare.
+
+Write Files – scriem fișierele generate direct în repo local.
+
+Execute Code Tool – comandă shell prin nod n8n: npm install, npm test, pytest etc.
+
+Log + Feedback – colectăm output de execuție și îl trimitem înapoi la Claude pentru ajustări, în ciclu.
+
+🧩 Model de prompt:
+text
+Copy code
+1. Citește cele 3 fișiere atașate.
+2. Analizează și planifică task-uri: create user endpoint, adaugă test etc.
+3. Trimite code: fișiere noi modificările plus comenzi de test și compilare.
+3. Cum rulăm totul autonom
+n8n rulează fluxul periodic sau la trigger extern (ex: issue pe GitHub).
+
+Claude primește contextul actualizat și generează cod nou.
+
+Codul este scris, compilat/testat automat.
+
+Rezultatele sunt logate și, dacă e nevoie, Claude primește feedback și rafinează.
+
+4. Ce ai nevoie concret:
+Componentă	Rol
+Claude API Key	Model + Files API + Exec Tool
+n8n	Orchestrare prompt → files → exec
+Agent runtime	Docker, VPS sau local
+Repo Git/GitHub	Salvare și trigger feed
+🛠️ Exemple de noduri n8n	HTTP request, Write file, Exec shell, log
+
+5. Plan de implementare rapid:
+Configurare n8n (instalare + API key CLAUDE).
+
+Creare workflow în n8n cu noduri:
+
+Trigger,
+
+HTTP Request → Claude (modelele Opus/Sonnet cu tools: ["files", "execute_code"]),
+
+Write data la răspunsuri,
+
+Exec code / tests,
+
+Feedback loop către Claude.
+
+Test e2e: modifică cod -> teste -> validare -> commit automat dacă trece.
+
+Extindere: deploy automat, notificări Slack / PR pe GitHub.
+
+Monitorizare: timpi de execuție, teste, erori – opțional alerting și retry.
+
+✅ Concluzie
+Poți crea un:
+
+Agent Claude care citește cod, generează to-do-uri, scrie & testează automat aplicația;
+
+Orchestrator n8n care rulează totul sincronizat periodic sau la trigger, asigurând un workflow complet autonomous CI/CD.
+
+Rezultatul? Generare de funcționalități, testare și chiar deployment automat cu minimă intervenție umană.
+
+Dacă vrei, pot să-ți ofer un template n8n preconfigurat și un exemplu de prompt adaptat la proiectul tău. Spune-mi ce framework folosești (Node, Python, etc.) și îți fac un workflow custom! 💡

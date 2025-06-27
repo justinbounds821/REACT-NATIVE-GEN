@@ -1,0 +1,165 @@
+brand_name: [ex: LunaPay]
+industry: [ex: Fintech]
+mission: [1 frază clară despre scopul brandului]
+values: [max 5, ex: Simplitate, Încredere, Rapiditate]
+audience: [ex: freelanceri, e-commerce, companii mici]
+tonality:
+  - formal_casual: [1–7]
+  - serious_playful: [1–7]
+  - premium_accessible: [1–7]
+logo_style: [ex: minimalist, monogramă, geometric]
+primary_color: [ex: #00264D]
+font_pairing: [dacă ai; altfel propun eu]
+deliverables: [imagini / PDF / ambele]
+
+
+Perfect, iată exact ce am nevoie de la tine pentru a genera Brand Book-ul vizual complet, în format imagini sau PDF de prezentare:
+
+✅ PROMPTUL IDEAL pentru Brand Book vizual
+Te rog să completezi următoarele câmpuri:
+
+text
+Copy
+Edit
+brand_name: [ex: LunaPay]
+industry: [ex: Fintech]
+mission: [1 frază clară despre scopul brandului]
+values: [max 5, ex: Simplitate, Încredere, Rapiditate]
+audience: [ex: freelanceri, e-commerce, companii mici]
+tonality:
+  - formal_casual: [1–7]
+  - serious_playful: [1–7]
+  - premium_accessible: [1–7]
+logo_style: [ex: minimalist, monogramă, geometric]
+primary_color: [ex: #00264D]
+font_pairing: [dacă ai; altfel propun eu]
+deliverables: [imagini / PDF / ambele]
+🧪 EXEMPLU (folosesc datele de la LunaPay acum)
+Am tot ce trebuie, deci încep prin a genera prima pagină de Brand Book vizual, care va include:
+
+Logo (stilizat + spațiere)
+
+Paletă de culori (cu swatch-uri reale)
+
+Font pairing cu preview
+
+Tone of Voice într-un layout modern
+
+🔧 Format: imagine PNG, A4, landscape – stil corporate fintech
+
+⏳ Generez acum…
+
+
+Image created
+
+
+
+
+
+
+Share
+Aceasta este prima pagină de Brand Book vizual pentru LunaPay – exact cum ai cerut: logo, culori, font, tone of voice, totul layoutat curat.
+
+Confirmă dacă vrei să continui cu următoarele pagini:
+
+Typography (detaliat)
+
+Layout & Grid
+
+Aplicare componente
+
+QA & Access
+
+Și alegi livrare: .PDF, .ZIP, .PNG sau link Figma-ready.
+
+
+
+
+You said:
+confirm typography detaliat
+
+
+ChatGPT said:
+
+Image created
+
+
+
+
+
+
+Share
+Am generat pagina completă pentru tipografie LunaPay – cu font principal, fallback, mărimi, tracking și scale. Confirmă dacă vrei să trecem la Layout & Grid sau altă secțiune vizuală.
+
+
+2/2
+
+
+
+You said:
+confirm layout & grid
+
+
+ChatGPT said:
+
+Image created
+
+
+
+
+
+
+Share
+Pagina vizuală pentru Layout & Grid este gata. Continuăm cu secțiunea "Aplicare componente" sau preferi "QA & Access" vizualizat în același stil?
+
+
+
+
+🎨 Paleta Principală LunaPay
+Nume	Rol	HEX	WCAG
+Luna Blue	Primary (fundal & CTA)	#00264D	9.2
+Neon Teal	Accent principal	#00C2E0	4.8
+Cloud White	Background UI	#F7F9FC	—
+Jet Black	Text dark	#1A1A1A	14.5
+
+🌈 Paletă Extinsă: UI States & Ilustrație
+Nume	Rol	HEX	WCAG
+Sky Teal	Hover / Focus accent	#1FE3F3	3.9
+Steel Blue	Border / subtle lines	#BCC8D6	6.3
+Snow Gray	Card BG / Neutral 50	#EEF2F6	—
+Success Green	Status pozitiv	#00B67A	4.5
+Warning Amber	Atenționări UI	#FFC107	3.1
+Error Red	Validări negative	#EB5757	5.0
+
+🧩 Variante tematice (sub-palete)
+🔵 Corporate
+Primary: #00264D
+
+Secondary: #00C2E0
+
+Neutral: #F7F9FC, #BCC8D6
+
+🌟 Highlight / Marketing
+Hero Gradient: linear-gradient(135deg, #00264D 0%, #00C2E0 100%)
+
+Shadow: rgba(0,38,77,0.1)
+
+🌤️ Light Mode
+BG: #FFFFFF
+
+Text: #1A1A1A
+
+Accent: #00C2E0
+
+🌙 Dark Mode
+BG: #0A0D13
+
+Text: #FFFFFF
+
+Accent: #00C2E0, #1FE3F3
+
+
+
+
+
+

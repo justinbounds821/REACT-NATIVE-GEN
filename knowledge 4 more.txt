@@ -1,0 +1,45 @@
+ A. Setări de rezoluție & export
+
+| Scenariu                        | Comandă în prompt | Observații |
+|---------------------------------|-------------------|------------|
+| Thumb rapid                     | *(implicit 1024 px)* | Doar preview, nu pentru print |
+| Poster landscape print          | `size 1792x1024`  | 150–200 DPI A3 / A4 landscape |
+| Tipar 300 DPI (A4)              | „**PDF vector A4 300 DPI**” sau „SVG full-size” | Evită artefactele |
+| Imagine ultra (4 K)             | „image 4096×4096” (dacă planul permite) | Pentru mock-ups hi-res |
+| Conversie Markdown → PDF        | Folosește Code-Interpreter + `reportlab` | GPT poate genera fisierul |
+
+> **Exemplu prompt complet:**  
+> `Generează afișul Brand Book one-page pentru LunaPay • format A4 300 DPI PDF vector • revizuiește textul după generare în română cu diacritice corecte.`
+
+---
+
+ B. Workflow corectură gramaticală
+
+1. **Generate** – livrează Brand Book în Markdown.  
+2. **Proofread** – prompt secundar:  
+   ```text
+   Revizuiește documentul de mai jos în română: 
+   - corectează diacritice 
+   - acord & punctuație 
+   - păstrează Markdown
+External check – Grammarly / LanguageTool la nevoie.
+
+Designer check – plugin „Grammarly for Figma” pe headline-uri.
+
+C. Checklist final livrare
+Diacritice uniforme: Ț/ț.
+
+Spații corecte înainte/după punctuație.
+
+Verbe la persoana stabilită (tu / voi).
+
+Numerale cu spațiu + unitate: 15 mm.
+
+Contrast min. WCAG AA verificat.
+
+Fişiere: .md + export .pdf / .svg (vector).
+
+<!-- EOF -->
+markdown
+Copy
+Edit

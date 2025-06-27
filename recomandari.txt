@@ -1,0 +1,19 @@
+// Consider making the document ID dynamic or a credential variable for better reusability and security.
+// Using hardcoded URLs can expose sensitive data or reduce flexibility.
+// Suggest abstracting the cleanup logic into a reusable function or node if reused elsewhere.
+// Helps maintain consistency and reduces duplication.
+json
+Copy
+Edit
+// Add fallback logic if filename is missing or malformed before applying startsWith.
+// Prevents potential runtime errors when branching file output.
+json
+Copy
+Edit
+// Improve splitting logic by escaping edge cases like escaped newlines or mixed line endings.
+// May avoid bugs in larger prompts or GPT-formatted outputs.
+json
+Copy
+Edit
+// Consider logging success/failure of npm/expo commands or wrapping them in try-catch.
+// Helps debug CI/CD pipeline failures or command-line errors.
